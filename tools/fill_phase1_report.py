@@ -50,7 +50,9 @@ def main() -> int:
     )
     services_out = (services.stdout + services.stderr).rstrip()
 
-    plot = ["Warm latency distribution (20 requests each, from submission/phase1_report.json)", ""]
+    plot = ["Warm latency distribution (20 requests each, from submission/phase1_report.json).",
+            "Measured from Cloud Shell; the VM is plain HTTP, Cloud Run and the function are HTTPS,",
+            "so each of their requests also pays a TLS handshake to us-central1.", ""]
     for name, label in (("vm", "IaaS VM"), ("cloudrun", "Cloud Run"), ("function", "Cloud Function")):
         st = p[name]["stats"]
         plot.append(f"{label}: cold={p[name]['cold_ms']} ms, warm min/median/p95/max = "
@@ -58,6 +60,10 @@ def main() -> int:
         plot.append(ascii_hist(p[name]["warm_ms"]))
         plot.append("")
     latency_plot = "```text\n" + "\n".join(plot).rstrip() + "\n```"
+
+    vm_cold, vm_warm = p["vm"]["cold_ms"], p["vm"]["stats"]["median"]
+    cr_cold, cr_warm = p["cloudrun"]["cold_ms"], p["cloudrun"]["stats"]["median"]
+    fn_cold, fn_warm = p["function"]["cold_ms"], p["function"]["stats"]["median"]
 
     answers = {
         "image_size_mb": str(args.image_size_mb),
@@ -95,17 +101,22 @@ def main() -> int:
         "run_services_list": "```text\n" + services_out + "\n```",
         "convergence_explanation": (
             "The list shows two Cloud Run services, not one: echo-bot, which I deployed, and "
-            "echo, which I never created as a Cloud Run service. It carries the labels "
+            "echo, which I never created as a Cloud Run service; it carries the labels "
             "goog-managed-by: cloudfunctions and goog-cloudfunctions-runtime: python311. A gen-2 "
-            "Cloud Function is therefore just a Cloud Run service that Google creates and manages "
-            "for me: gcloud functions deploy sent my source to Cloud Build, which used buildpacks "
-            "to produce a container image (Functions Framework + main.py) and deployed it on Cloud "
-            "Run. Both paths start a container from zero on the same infrastructure, so their cold "
-            "starts are close, while the VM has no cold start because its container never stops. "
-            "What genuinely differs is who builds and owns the image (my Dockerfile vs. a "
-            "buildpack image I never see), the defaults (concurrency 1 per instance for the "
-            "function vs. 80 for Cloud Run, a max-instances of 100 vs. my 3) and the deployment "
-            "interface (source + entry point vs. an image)."
+            "Cloud Function is therefore a Cloud Run service that Google creates and manages for "
+            "me: gcloud functions deploy sent my source to Cloud Build, which built a container "
+            "image with buildpacks (Functions Framework + main.py) and deployed it to Cloud Run. "
+            f"Both paths pay a container cold start on the same platform (Cloud Run {cr_cold} ms, "
+            f"function {fn_cold} ms) and have almost identical warm medians ({cr_warm} vs "
+            f"{fn_warm} ms) because requests take the same path: Google's front end, HTTPS, then "
+            f"a running container. The VM has no real cold start ({vm_cold} vs {vm_warm} ms warm, "
+            "the extra being the first TCP connection) because its container never stops. My cold "
+            "numbers are single samples, so the gap between the two serverless cold starts mostly "
+            "reflects one-off factors such as image pull and instance placement. What genuinely "
+            "differs is who builds and owns the image (my Dockerfile vs. a buildpack image I never "
+            "see), the defaults (one request per instance for the function vs. 80 for Cloud Run, "
+            "max-instances 100 vs. my 3) and the deployment interface (source + entry point vs. "
+            "an image)."
         ),
     }
 
