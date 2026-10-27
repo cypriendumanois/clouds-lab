@@ -1,0 +1,24 @@
+{
+  "phase": "0",
+  "environment": {
+    "cloud_shell": true
+  },
+  "python": {
+    "version": "3.12.3",
+    "ok": true
+  },
+  "gcloud": {
+    "account": "cyprien.dumanois@eurecom.fr",
+    "project": "eurecomgpt-cyprien",
+    "error": null
+  },
+  "docker": {
+    "version": "Docker version 29.9.2, build a82e528",
+    "present": true
+  },
+  "git": {
+    "remote": "https://github.com/cypriendumanois/clouds-lab.git",
+    "is_github": true,
+    "slug": "cypriendumanois/clouds-lab"
+  }
+}
